@@ -1,0 +1,581 @@
+---
+title: "Stat_learn_project"
+author: "Chi Zhang"
+date: "2018??5??1??"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r read data}
+library(data.table)
+# go_ny
+go_ny_train <- fread(input = "./data/go_ny/train.csv", verbose = FALSE)
+go_ny_test <- fread(input = "./data/go_ny/test.csv", verbose = FALSE)
+go_ny_validation <- fread(input = "./data/go_ny/validation.csv", verbose = FALSE)
+
+# go_sf
+go_sf_train <- fread(input = "./data/go_sf/train.csv", verbose = FALSE)
+go_sf_test <- fread(input = "./data/go_sf/test.csv", verbose = FALSE)
+go_sf_validation <- fread(input = "./data/go_sf/validation.csv", verbose = FALSE)
+
+# tw_ny
+tw_ny_train <- fread(input = "./data/tw_ny/train.csv", verbose = FALSE)
+tw_ny_test <- fread(input = "./data/tw_ny/test.csv", verbose = FALSE)
+tw_ny_validation <- fread(input = "./data/tw_ny/validation.csv", verbose = FALSE)
+
+# tw_oc
+tw_oc_train <- fread(input = "./data/tw_oc/train.csv", verbose = FALSE)
+tw_oc_test <- fread(input = "./data/tw_oc/test.csv", verbose = FALSE)
+tw_oc_validation <- fread(input = "./data/tw_oc/validation.csv", verbose = FALSE)
+
+# reddit_sample
+reddit_sample_train <- fread(input = "./data/reddit_sample/train.csv", verbose = FALSE)
+reddit_sample_test <- fread(input = "./data/reddit_sample/test.csv", verbose = FALSE)
+reddit_sample_validation <- fread(input = "./data/reddit_sample/validation.csv", verbose = FALSE)
+
+# reddit_top
+reddit_top_train <- fread(input = "./data/reddit_top/train.csv", verbose = FALSE)
+reddit_top_test <- fread(input = "./data/reddit_top/test.csv", verbose = FALSE)
+reddit_top_validation <- fread(input = "./data/reddit_top/validation.csv", verbose = FALSE)
+
+# lastfm
+lastfm_train <- fread(input = "./data/lastfm/train.csv", verbose = FALSE)
+lastfm_test <- fread(input = "./data/lastfm/test.csv", verbose = FALSE)
+lastfm_validation <- fread(input = "./data/lastfm/validation.csv", verbose = FALSE)
+```
+
+
+
+```{r preprocess}
+# go_ny
+go_ny_train_sh <- go_ny_train[V1 < 500 & V2 < 2000,]
+go_ny_test_sh <- go_ny_test[V1 < 500 & V2 < 2000,]
+go_ny_validation_sh <- go_ny_validation[V1 < 500 & V2 < 2000,]
+go_ny_dat <- rbind(rbind(go_ny_train_sh, go_ny_test_sh),go_ny_validation_sh)
+
+# go_sf
+go_sf_train_sh <- go_sf_train[V1 < 500 & V2 < 2000,]
+go_sf_test_sh <- go_sf_test[V1 < 500 & V2 < 2000,]
+go_sf_validation_sh <- go_sf_validation[V1 < 500 & V2 < 2000,]
+go_sf_dat <- rbind(rbind(go_sf_train_sh, go_sf_test_sh),go_sf_validation_sh)
+
+# tw_ny
+tw_ny_train_sh <- tw_ny_train[V1 < 1000 & V2 < 1000,]
+tw_ny_test_sh <- tw_ny_test[V1 < 1000 & V2 < 1000,]
+tw_ny_validation_sh <- tw_ny_validation[V1 < 1000 & V2 < 1000,]
+tw_ny_dat <- rbind(rbind(tw_ny_train_sh, tw_ny_test_sh),tw_ny_validation_sh)
+
+# tw_oc
+tw_oc_train_sh <- tw_oc_train[V1 < 1000 & V2 < 1000,]
+tw_oc_test_sh <- tw_oc_test[V1 < 1000 & V2 < 1000,]
+tw_oc_validation_sh <- tw_oc_validation[V1 < 1000 & V2 < 1000,]
+tw_oc_dat <- rbind(rbind(tw_oc_train_sh, tw_oc_test_sh),tw_oc_validation_sh)
+
+# reddit_sample
+reddit_sample_train_sh <- reddit_sample_train[V1 < 1000 & V2 < 1000,]
+reddit_sample_test_sh <- reddit_sample_test[V1 < 1000 & V2 < 1000,]
+reddit_sample_validation_sh <- reddit_sample_validation[V1 < 1000 & V2 < 1000,]
+reddit_sample_dat <- rbind(rbind(reddit_sample_train_sh, reddit_sample_test_sh),reddit_sample_validation_sh)
+
+# reddit_top
+reddit_top_train_sh <- reddit_top_train[V1 < 1000 & V2 < 1000,]
+reddit_top_test_sh <- reddit_top_test[V1 < 1000 & V2 < 1000,]
+reddit_top_validation_sh <- reddit_top_validation[V1 < 1000 & V2 < 1000,]
+reddit_top_dat <- rbind(rbind(reddit_top_train_sh, reddit_top_test_sh),reddit_top_validation_sh)
+
+# lastfm
+lastfm_train_sh <- lastfm_train[V1 < 500 & V2 < 2000,]
+lastfm_test_sh <- lastfm_test[V1 < 500 & V2 < 2000,]
+lastfm_validation_sh <- lastfm_validation[V1 < 500 & V2 < 2000,]
+lastfm_dat <- rbind(rbind(lastfm_train_sh, lastfm_test_sh),lastfm_validation_sh)
+```
+
+```{r table 1: entries and density}
+table_1 <- function(data, m, n){
+  entries <- length(data$V1)
+  density <- entries/(m*n)*100
+  num <- sum(data$V3)/entries
+  dat <- data.table("Size: U*M" = sprintf("%d*%d",m,n), "# Entries" = entries, "Desity" = sprintf("%.2f%%",density), "average count" = round(num, digits = 1))  
+  return(dat)
+}
+
+# go_ny
+go_ny_table1 <- table_1(go_ny_dat, 500, 2000)
+# go_sf
+go_sf_table1 <- table_1(go_sf_dat, 500, 2000)
+# tw_ny
+tw_ny_table1 <- table_1(tw_ny_dat, 1000, 1000)
+# tw_oc
+tw_oc_table1 <- table_1(tw_oc_dat, 1000, 1000)
+# reddit_sample
+reddit_sample_table1 <- table_1(reddit_sample_dat, 1000, 1000)
+# reddit_top
+reddit_top_table1 <- table_1(reddit_top_dat, 1000, 1000)
+# lastfm
+lastfm_table1 <- table_1(lastfm_dat, 500, 2000)
+
+
+table1 <- rbind(reddit_sample_table1, reddit_top_table1)
+table1 <- rbind(table1, lastfm_table1)
+table1 <- rbind(table1, go_ny_table1)
+table1 <- rbind(table1, go_sf_table1)
+table1 <- rbind(table1, tw_oc_table1)
+table1 <- rbind(table1, tw_ny_table1)
+
+table1_name <- data.table("Name" = c("reddit_sample","reddit_top","lastfm","go_ny","go_sf","tw_oc","tw_ny"))
+table1 <- cbind(table1_name, table1)
+table1
+```
+
+```{r table 2: repeat and novel}
+table_2 <- function(data){
+  data <- data[,':='('all',1)]
+  data <- data[,':='('re',as.numeric(V3 > 1))]
+  data <- data[, lapply(X = .SD, FUN = "sum"), .SDcol = c("all","re"), keyby = V1]
+  data <- data[, ':='("per", round(re/all, digits = 3)*100)]
+  data <- data[, lapply(X = .SD, FUN = "mean"), .SDcol = c("all","per")]
+  data <- data.table("Unique items per user (average)" = round(data$all, digits = 1), "User-item pairs that are repeats" = sprintf("%.1f%%",data$per))
+  return(data)
+}
+# go_ny
+go_ny_table2 <- table_2(go_ny_dat)
+# go_sf
+go_sf_table2 <- table_2(go_sf_dat)
+# tw_ny
+tw_ny_table2 <- table_2(tw_ny_dat)
+# tw_oc
+tw_oc_table2 <- table_2(tw_oc_dat)
+# reddit_sample
+reddit_sample_table2 <- table_2(reddit_sample_dat)
+# reddit_top
+reddit_top_table2 <- table_2(reddit_top_dat)
+# lastfm
+lastfm_table2 <- table_2(lastfm_dat)
+
+table2 <- rbind(reddit_sample_table2, reddit_top_table2)
+table2 <- rbind(table2, lastfm_table2)
+table2 <- rbind(table2, go_ny_table2)
+table2 <- rbind(table2, go_sf_table2)
+table2 <- rbind(table2, tw_oc_table2)
+table2 <- rbind(table2, tw_ny_table2)
+
+table2_name <- data.table("Name" = c("reddit_sample","reddit_top","lastfm","go_ny","go_sf","tw_oc","tw_ny"))
+table2 <- cbind(table2_name, table2)
+table2
+```
+
+```{r Characteristics of Repeat Consumption}
+# go_ny
+go_ny_log <- go_ny_dat[, lapply(X = .SD, FUN = "sum"), .SDcol = "V3", keyby = V3]
+colnames(go_ny_log) <- c("count", "pro")
+go_ny_log <- go_ny_log[, ':='('pro', pro/sum(pro))]
+plot(pro ~ count, data = go_ny_log, log = "xy", main = "Log-log Plot")
+```
+
+```{r Characteristics of New Consumption}
+ch_new <- function(train, test){
+  train <- train[, ':='('V4',1)]
+  test <- test[, ':='('V4',1)]
+
+  temp <- rbind(train[,c("V1","V2","V4")], test[,c("V1","V2","V4")])
+  new <- nrow(unique(temp)) - nrow(train)
+  pair <- round(100*new/nrow(test), digits = 1)
+
+  temp <- unique(temp)
+  r <- nrow(train)+1
+  l <- nrow(temp)
+  test_new <- temp[c(r:l)]
+  test_new <- merge(x = test_new[,c("V1","V2")], y = test[,c("V1","V2","V3")], all.x = TRUE)
+  weight.new <- sum(test_new$V3)
+  weight.all <- sum(test$V3)
+  event <- round(100*weight.new/weight.all, digits = 1)
+  
+  dat <- data.table("User-item pairs that are new in test data" = sprintf("%.1f%%", pair), "User-item events that are new in test data" = sprintf("%.1f%%", event))
+  return(dat)
+}
+# go_ny
+go_ny_new <- ch_new(go_ny_train_sh, go_ny_test_sh)
+# go_sf
+go_sf_new <- ch_new(go_sf_train_sh, go_sf_test_sh)
+# tw_ny
+tw_ny_new <- ch_new(tw_ny_train_sh, tw_ny_test_sh)
+# tw_oc
+tw_oc_new <- ch_new(tw_oc_train_sh, tw_oc_test_sh)
+# reddit_sample
+reddit_sample_new <- ch_new(reddit_sample_train_sh, reddit_sample_test_sh)
+# reddit_top
+reddit_top_new <- ch_new(reddit_top_train_sh, reddit_top_test_sh)
+# lastfm
+lastfm_new <- ch_new(lastfm_train_sh, lastfm_test_sh)
+
+ch_of_new <- rbind(reddit_sample_new, reddit_top_new)
+ch_of_new <- rbind(ch_of_new, lastfm_new)
+ch_of_new <- rbind(ch_of_new, go_ny_new)
+ch_of_new <- rbind(ch_of_new, go_sf_new)
+ch_of_new <- rbind(ch_of_new, tw_oc_new)
+ch_of_new <- rbind(ch_of_new, tw_ny_new)
+
+new_name <- data.table("Name" = c("reddit_sample","reddit_top","lastfm","go_ny","go_sf","tw_oc","tw_ny"))
+ch_of_new <- cbind(new_name, ch_of_new)
+ch_of_new
+```
+
+
+-------------------------------------------Table -> Matrix-----------------------------------------
+
+```{r transform matrix}
+trans_matrix = function(data, nr, nc){
+  trans_matrix = matrix(data = 10.^(-16), nrow = nr, ncol = nc)
+  for(i in 1:length(data$V1)){
+    m <- data[i]$V1+1
+    n <- data[i]$V2+1
+    v <- data[i]$V3
+    trans_matrix[m,n] = v
+  }
+  return(trans_matrix)
+}
+
+go.ny.train = trans_matrix(go_ny_train_sh, 500, 2000)
+go.ny.validation = trans_matrix(go_ny_validation_sh, 500, 2000)
+go.ny.test = trans_matrix(go_ny_test_sh, 500, 2000)
+
+go.sf.train = trans_matrix(go_sf_train_sh, 500, 2000)
+go.sf.validation = trans_matrix(go_sf_validation_sh, 500, 2000)
+go.sf.test = trans_matrix(go_sf_test_sh, 500, 2000)
+
+lastfm.train = trans_matrix(lastfm_train_sh, 500, 2000)
+lastfm.validation = trans_matrix(lastfm_validation_sh, 500, 2000)
+lastfm.test = trans_matrix(lastfm_test_sh, 500, 2000)
+
+reddit.sample.train = trans_matrix(reddit_sample_train_sh, 1000, 1000)
+reddit.sample.validation = trans_matrix(reddit_sample_validation_sh, 1000, 1000)
+reddit.sample.test = trans_matrix(reddit_sample_test_sh, 1000, 1000)
+
+reddit.top.train = trans_matrix(reddit_top_train_sh, 1000, 1000)
+reddit.top.validation = trans_matrix(reddit_top_validation_sh, 1000, 1000)
+reddit.top.test = trans_matrix(reddit_top_test_sh, 1000, 1000)
+
+tw.ny.train = trans_matrix(tw_ny_train_sh, 1000, 1000)
+tw.ny.validation = trans_matrix(tw_ny_validation_sh, 1000, 1000)
+tw.ny.test = trans_matrix(tw_ny_test_sh, 1000, 1000)
+
+tw.oc.train = trans_matrix(tw_oc_train_sh, 1000, 1000)
+tw.oc.validation = trans_matrix(tw_oc_validation_sh, 1000, 1000)
+tw.oc.test = trans_matrix(tw_oc_test_sh, 1000, 1000)
+```
+
+------------------------------------------------NMF------------------------------------------------
+```{r NMF}
+library(NMF)
+dat_nmf <- nmf(x=lastfm.train, rank=30, nrun = 1)
+```
+
+```{r normalize p}
+nmf_p <- function(W, H){
+  dat <- W%*%H
+  dat <- dat / rowSums(dat)
+  return(dat)
+}
+
+dat_nmf_p <- nmf_p(dat_nmf@fit@W, dat_nmf@fit@H)
+```
+
+-------------------------------------------------MM------------------------------------------------
+```{r compute theta from train}
+thetaI = function(data){
+  ti = data / rowSums(data)
+  return(ti)
+}
+
+thetaP = function(data){
+  s = sum(data)
+  tp = (colSums(data) + 1 / ncol(data)) / (s + 1)
+  return(matrix(tp,1,ncol(data)))
+}
+```
+
+
+```{r compute individual pi: EM -> weights}
+pi_global = function(data, thetaI, thetaP, pi_init){
+  #nba = length(which(data != 10.^(-16))) / nrow(data)
+  nba =  sum(data)/ nrow(data)
+  pi = pi_init
+  thetaP = thetaP[rep(1:nrow(thetaP),nrow(data)),]
+  for(k in 1:10){
+    #E step
+    tmp = pi * thetaI
+    z =  tmp / (tmp + (1 - pi) * thetaP) 
+
+    #M step
+    pi = (sum(data * z) + pi * nba - 1) / (sum(data) + nba - 2)
+  }
+ 
+  return(pi)
+}
+
+pi_individual = function(data, thetaI, thetaP, pi_init, pi_global){
+  nba =  sum(data)/ nrow(data)
+  tmp = matrix(data = 0, nrow = nrow(data), ncol = ncol(data))
+  tmp1 = matrix(data = 0, nrow = nrow(data), ncol = ncol(data))
+  pi = matrix(data = pi_init, nrow = nrow(data), ncol = 1)
+  thetaP = thetaP[rep(1:nrow(thetaP),nrow(data)),]
+  for(k in 1:10){
+    #E step
+    for (u in 1: nrow(data)) {
+      tmp[u,] = pi[u] * thetaI[u,]
+      tmp1[u,] = (1 - pi[u]) * thetaP[u,]
+    } 
+    z = tmp / (tmp + tmp1)
+    #M step
+    for (u in 1:nrow(data)){
+      pi[u] = (rowSums(data * z)[u] + pi_global * nba) / (rowSums(data)[u] + nba)
+    }
+  }
+  return(pi)
+}
+
+
+# pi_global = pi_global(data = N,thetaI = thetaI(M), thetaP = thetaP(M), pi_init = 0.9)
+# pi_ind = pi_individual(data = N,thetaI = thetaI(M), thetaP = thetaP(M), pi_init = 0.5, pi_global = pi_global)
+```
+
+```{r Puj <= mixture model,evalutation: log_loss, recall}
+Consumption_P = function(data, pi_ind, thetaI, thetaP){
+  thetaP = thetaP[rep(1:nrow(thetaP),nrow(data)),]
+  cp = matrix(data = 0, nrow = nrow(data), ncol = ncol(data))
+  for (u in 1:nrow(data)){
+      cp[u,] = pi_ind[u] * thetaI[u,] + (1 - pi_ind[u]) * thetaP[u,]
+  }
+  return(cp)
+}
+
+log_loss = function(data, Consumption_P){
+  return(-sum(data * log(Consumption_P)) / sum(data))
+}
+
+recall_k = function(data, k, Consumption_P){
+  s = 0
+  for (u in 1:nrow(data)){
+    ind = sort(Consumption_P[u,], decreasing = TRUE, index.return = TRUE)$ix
+    s = s + sum(data[u,ind[1:k]] / sum(data[u,]))
+  }
+  return(s/sum(data))
+}
+
+
+# P = Consumption_P(K, pi_ind = pi_ind, thetaI = thetaI(M), thetaP = thetaP(M))
+# log_loss(data = K, Consumption_P = P)
+# recall_k(data = K, k = 100, Consumption_P = P)
+```
+
+```{r compute nmf evaluation}
+#go_ny
+dat_ll = log_loss(data = lastfm.test, Consumption_P = dat_nmf_p)
+dat_rk = recall_k(data = lastfm.test, k = 100, Consumption_P = dat_nmf_p)
+```
+
+
+```{r computation}
+#go_ny
+go_ny_pi_global = pi_global(data = go.ny.validation, thetaI = thetaI(go.ny.train), thetaP = thetaP(go.ny.train), pi_init = 0.9)
+go_ny_pi_ind = pi_individual(data = go.ny.validation,thetaI = thetaI(go.ny.train), thetaP = thetaP(go.ny.train), pi_init = 0.5, pi_global = go_ny_pi_global)
+go_ny_P = Consumption_P(data = go.ny.test, pi_ind = go_ny_pi_ind, thetaI = thetaI(go.ny.train), thetaP = thetaP(go.ny.train))
+go_ny_ll = log_loss(data = go.ny.test, Consumption_P = go_ny_P)
+go_ny_rk = recall_k(data = go.ny.test, k = 100, Consumption_P = go_ny_P)
+
+#go_sf
+go_sf_pi_global = pi_global(data = go.sf.validation, thetaI = thetaI(go.sf.train), thetaP = thetaP(go.sf.train), pi_init = 0.9)
+go_sf_pi_ind = pi_individual(data = go.sf.validation,thetaI = thetaI(go.sf.train), thetaP = thetaP(go.sf.train), pi_init = 0.5, pi_global = go_sf_pi_global)
+go_sf_P = Consumption_P(data = go.sf.test, pi_ind = go_sf_pi_ind, thetaI = thetaI(go.sf.train), thetaP = thetaP(go.sf.train))
+go_sf_ll = log_loss(data = go.sf.test, Consumption_P = go_sf_P)
+go_sf_rk = recall_k(data = go.sf.test, k = 100, Consumption_P = go_sf_P)
+
+#lastfm
+lastfm_pi_global = pi_global(data = lastfm.validation, thetaI = thetaI(lastfm.train), thetaP = thetaP(lastfm.train), pi_init = 0.9)
+lastfm_pi_ind = pi_individual(data = lastfm.validation,thetaI = thetaI(lastfm.train), thetaP = thetaP(lastfm.train), pi_init = 0.5, pi_global = lastfm_pi_global)
+lastfm_P = Consumption_P(data = lastfm.test, pi_ind = lastfm_pi_ind, thetaI = thetaI(lastfm.train), thetaP = thetaP(lastfm.train))
+lastfm_ll = log_loss(data = lastfm.test, Consumption_P = lastfm_P)
+lastfm_rk = recall_k(data = lastfm.test, k = 100, Consumption_P = lastfm_P)
+
+#reddit_sample
+reddit_sample_pi_global = pi_global(data = reddit.sample.validation, thetaI = thetaI(reddit.sample.train), thetaP = thetaP(reddit.sample.train), pi_init = 0.9)
+reddit_sample_pi_ind = pi_individual(data = reddit.sample.validation,thetaI = thetaI(reddit.sample.train), thetaP = thetaP(reddit.sample.train), pi_init = 0.5, pi_global = reddit_sample_pi_global)
+reddit_sample_P = Consumption_P(data = reddit.sample.test, pi_ind = reddit_sample_pi_ind, thetaI = thetaI(reddit.sample.train), thetaP = thetaP(reddit.sample.train))
+reddit_sample_ll = log_loss(data = reddit.sample.test, Consumption_P = reddit_sample_P)
+reddit_sample_rk = recall_k(data = reddit.sample.test, k = 100, Consumption_P = reddit_sample_P)
+
+#reddit_top
+reddit_top_pi_global = pi_global(data = reddit.top.validation, thetaI = thetaI(reddit.top.train), thetaP = thetaP(reddit.top.train), pi_init = 0.9)
+reddit_top_pi_ind = pi_individual(data = reddit.top.validation,thetaI = thetaI(reddit.top.train), thetaP = thetaP(reddit.top.train), pi_init = 0.5, pi_global = reddit_top_pi_global)
+reddit_top_P = Consumption_P(data = reddit.top.test, pi_ind = reddit_top_pi_ind, thetaI = thetaI(reddit.top.train), thetaP = thetaP(reddit.top.train))
+reddit_top_ll = log_loss(data = reddit.top.test, Consumption_P = reddit_top_P)
+reddit_top_rk = recall_k(data = reddit.top.test, k = 100, Consumption_P = reddit_top_P)
+
+#tw_ny
+tw_ny_pi_global = pi_global(data = tw.ny.validation, thetaI = thetaI(tw.ny.train), thetaP = thetaP(tw.ny.train), pi_init = 0.9)
+tw_ny_pi_ind = pi_individual(data = tw.ny.validation,thetaI = thetaI(tw.ny.train), thetaP = thetaP(tw.ny.train), pi_init = 0.5, pi_global = tw_ny_pi_global)
+tw_ny_P = Consumption_P(data = tw.ny.test, pi_ind = tw_ny_pi_ind, thetaI = thetaI(tw.ny.train), thetaP = thetaP(tw.ny.train))
+tw_ny_ll = log_loss(data = tw.ny.test, Consumption_P = tw_ny_P)
+tw_ny_rk = recall_k(data = tw.ny.test, k = 100, Consumption_P = tw_ny_P)
+
+#tw_oc
+tw_oc_pi_global = pi_global(data = tw.oc.validation, thetaI = thetaI(tw.oc.train), thetaP = thetaP(tw.oc.train), pi_init = 0.9)
+tw_oc_pi_ind = pi_individual(data = tw.oc.validation,thetaI = thetaI(tw.oc.train), thetaP = thetaP(tw.oc.train), pi_init = 0.5, pi_global = tw_oc_pi_global)
+tw_oc_P = Consumption_P(data = tw.oc.test, pi_ind = tw_oc_pi_ind, thetaI = thetaI(tw.oc.train), thetaP = thetaP(tw.oc.train))
+tw_oc_ll = log_loss(data = tw.oc.test, Consumption_P = tw_oc_P)
+tw_oc_rk = recall_k(data = tw.oc.test, k = 100, Consumption_P = tw_oc_P)
+```
+
+```{r compute prediction of pro of novel}
+compute_p <- function(train, P){
+  for(u in 1:length(train$V1)){
+    P[as.numeric(train[u,"V1"])+1, as.numeric(train[u,"V2"])+1] <- 0
+  }
+  dat <- rowSums(P)
+  n <- nrow(P)
+  predict <- data.table("user" = c(1:n), "predict" = dat)
+  return(predict)
+}
+# #mm
+# #go_ny
+# go_ny_predict_mm <- compute_p(go_ny_train_sh, go_ny_P)
+# #go_sf
+# go_sf_predict_mm <- compute_p(go_sf_train_sh, go_sf_P)
+# #lastfm
+# lastfm_predict_mm <- compute_p(lastfm_train_sh, lastfm_P)
+# #reddit_sample
+# reddit_sample_predict_mm <- compute_p(reddit_sample_train_sh, reddit_sample_P)
+# #reddit_top
+# reddit_top_predict_mm <- compute_p(reddit_top_train_sh, reddit_top_P)
+# #tw_ny
+# tw_ny_predict_mm <- compute_p(tw_ny_train_sh, tw_ny_P)
+# #tw_oc
+# tw_oc_predict_mm <- compute_p(tw_oc_train_sh, tw_oc_P)
+
+# go_ny_predict_nmf <- compute_p(go_ny_train_sh, dat_nmf_p)
+# go_sf_predict_nmf <- compute_p(go_sf_train_sh, dat_nmf_p)
+lastfm_predict_nmf <- compute_p(lastfm_train_sh, dat_nmf_p)
+# reddit_sample_predict_nmf <- compute_p(reddit_sample_train_sh, dat_nmf_p)
+# reddit_top_predict_nmf <- compute_p(reddit_top_train_sh, dat_nmf_p)
+# tw_ny_predict_nmf <- compute_p(tw_ny_train_sh, dat_nmf_p)
+# tw_oc_predict_nmf <- compute_p(tw_oc_train_sh, dat_nmf_p)
+```
+
+```{r compute true}
+compute_true <- function(train, test){
+  train <- train[, ':='('V4',1)]
+  test <- test[, ':='('V4',1)]
+  temp <- rbind(train[,c("V1","V2","V4")], test[,c("V1","V2","V4")])
+  temp <- unique(temp)
+  r <- nrow(train)+1
+  l <- nrow(temp)
+  test_new <- temp[c(r:l)]
+  test_new <- test_new[, lapply(X = .SD, FUN = "sum"), .SDcol = "V4", keyby = V1]
+  colnames(test_new) <- c("V1","V5")
+  test <- test[, lapply(X = .SD, FUN = "sum"), .SDcol = "V4", keyby = V1]
+  test <- merge(x = test, y = test_new, by = "V1", all.x = TRUE)
+  test[is.na(V5), "V5"] <- 0
+  test <- test[, ':='(true, V5/V4)]
+  test <- test[, c("V1", "true")]
+  colnames(test) <- c("user", "true")
+  return(test)
+}
+
+# go_ny
+go_ny_true <- compute_true(go_ny_train_sh, go_ny_test_sh)
+# go_sf
+go_sf_true <- compute_true(go_sf_train_sh, go_sf_test_sh)
+# tw_ny
+tw_ny_true <- compute_true(tw_ny_train_sh, tw_ny_test_sh)
+# tw_oc
+tw_oc_true <- compute_true(tw_oc_train_sh, tw_oc_test_sh)
+# reddit_sample
+reddit_sample_true <- compute_true(reddit_sample_train_sh, reddit_sample_test_sh)
+# reddit_top
+reddit_top_true <- compute_true(reddit_top_train_sh, reddit_top_test_sh)
+# lastfm
+lastfm_true <- compute_true(lastfm_train_sh, lastfm_test_sh)
+```
+
+```{r plot predict vs predict}
+library(ggplot2)
+novel_plot <- function(predict, true, ylabel, name){
+  novel <- merge(x = predict, y = true, by = "user", all.x = TRUE)
+  novel[is.na(true), "true"] <- 0
+  novel <- novel[, ':='(color, "above")]
+  below <- 0
+  rmse <- 0
+  for(i in 1:length(novel$user)){
+    rmse <- rmse + (as.numeric(novel[i, "predict"] - novel[i, "true"]))^2
+    if(novel[i, "predict"] < novel[i, "true"]){
+      below <- below + 1
+      novel[i, "color"] <- "below"
+    }
+  }
+  above <- length(novel$user) - below
+  rmse <- sqrt(rmse/length(novel$user))
+  qplot(x = true, y = predict, data = novel, color = color, xlim = c(-0.2,1.2), ylim = c(-0.2,1.2), xlab = "True", ylab = ylabel, main = name) +
+    geom_abline(linetype = "dashed") +
+    annotate("text", x = 1, y = -0.05, label = sprintf("Above: %d",above), size = 3) + 
+    annotate("text", x = 1, y = -0.1, label = sprintf("Below: %d",below), size = 3) +
+    annotate("text", x = 1, y = -0.15, label = sprintf("rmse: %.4f",rmse), size = 3)
+}
+
+# # mm plot
+# novel_plot(go_ny_predict_mm, go_ny_true, "Mixture", "go_ny")
+# novel_plot(go_sf_predict_mm, go_sf_true, "Mixture", "go_sf")
+# novel_plot(lastfm_predict_mm, lastfm_true, "Mixture", "lastfm")
+# novel_plot(reddit_sample_predict_mm, reddit_sample_true, "Mixture", "reddit_sample")
+# novel_plot(reddit_top_predict_mm, reddit_top_true, "Mixture", "reddit_top")
+# novel_plot(tw_ny_predict_mm, tw_ny_true, "Mixture", "tw_ny")
+# novel_plot(tw_oc_predict_mm, tw_oc_true, "Mixture", "tw_oc")
+
+# novel_plot(go_ny_predict_nmf, go_ny_true, "NMF 10", "go_ny")
+# novel_plot(go_sf_predict_nmf, go_sf_true, "NMF 10", "go_sf")
+novel_plot(lastfm_predict_nmf, lastfm_true, "NMF 30", "lastfm")
+# novel_plot(reddit_sample_predict_nmf, reddit_sample_true, "NMF 10", "reddit_sample")
+# novel_plot(reddit_top_predict_nmf, reddit_top_true, "NMF 10", "reddit_top")
+# novel_plot(tw_ny_predict_nmf, tw_ny_true, "NMF 10", "tw_ny")
+# novel_plot(tw_oc_predict_nmf, tw_oc_true, "NMF 10(nsNMF)", "tw_oc")
+```
+
+```{r accociation analysis}
+n = go_ny_train_sh
+colnames(n) = c("id","items","freq")
+n = n[,.(freq=sum(freq)),by = items]
+n = n[freq/sum(freq) > 0.001,]
+tmp = setorderv(n[rep(1:nrow(n),nrow(n)),], cols = "items")
+colnames(tmp) = c(rep("items1",1),"freq1")
+tp = n[rep(1:nrow(n),nrow(n)),]
+m = cbind(tmp,tp)
+m = m[,`:=`(sf, freq1+freq)]
+#m = m[sf/sum(sf) >0.001]
+
+```
+
+```{r function association analysis}
+library(arules)
+ass = function(data){
+  a = data[,1:2]
+  colnames(a) = c("id","items")
+  a= data.frame(unique(a))
+  trans = as(split(a[,"id"], a[,"items"]), "transactions")
+  frequentItems = eclat (trans, parameter = list(supp = 0.07, maxlen = 15))
+  itemFrequencyPlot(trans, topN=10, type="absolute", main="Item Frequency")
+  rules = apriori (trans, parameter = list(supp = 0.01))
+  rules_conf = sort (rules, by="confidence", decreasing=TRUE)
+  inspect(head(rules_conf))
+  rules_lift = sort (rules, by="lift", decreasing=TRUE) # 'high-lift' rules.
+  inspect(head(rules_lift))
+}
+go_sf_train_ass = ass(go_sf_train)
+```
